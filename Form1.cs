@@ -10,6 +10,7 @@ using System.Windows.Forms;
 using System.Resources;
 using System.Globalization;
 using System.Collections;
+using MySql.Data.MySqlClient;
 
 namespace sourse
 {
@@ -77,9 +78,25 @@ namespace sourse
             
             InitializeComponent();
             BackButton.Hide();
+            labelRegLog.Hide();
+            labelRegPass.Hide();
+            RegLogField.Hide();
+            RegPassField.Hide();
             PozImage.Hide();
+            Generate.Hide();
+            SexCheckBox.Hide();
+            OralCheckBox.Hide();
+            buttonRegister.Hide();
+            labelMin.Hide();
+            labelSec.Hide();
+            labelMs.Hide();
             Poses = new PoseManager();
+            labelMin.Text = "00 :";
+            labelSec.Text = "00 :";
+            labelMs.Text = "00";
+            timer1.Interval = 1;
         }
+        private int ms, sec, min;
 
         private void button3_Click(object sender, EventArgs e)
         {
@@ -132,16 +149,137 @@ namespace sourse
             LogoTextImage.Show();
             BackButton.Hide();
             PozImage.Hide();
-            timer1.Stop();
-            timeLabel.Text = "";
+            timer1.Enabled = false;
+            labelMin.Hide();
+            labelSec.Hide();
+            labelMs.Hide();
+        }
+
+        private void buttonSingIn_Click(object sender, EventArgs e)
+        {
+            String loginUser = loginField.Text;
+            String passUser = passField.Text;
+
+            DataBase db = new DataBase();
+            DataTable table = new DataTable();
+            MySqlDataAdapter adapter = new MySqlDataAdapter();
+            MySqlCommand command = new MySqlCommand("SELECT * FROM `users` WHERE `login` = @uL AND `pass` = @uP", db.getConnect());
+            command.Parameters.Add("@uL", MySqlDbType.VarChar).Value = loginUser;
+            command.Parameters.Add("@uP", MySqlDbType.VarChar).Value = passUser;
+            adapter.SelectCommand = command;
+            adapter.Fill(table);
+            if (table.Rows.Count > 0)
+            {
+                PozImage.Show();
+                Generate.Show();
+                SexCheckBox.Show();
+                OralCheckBox.Show();
+                labelMin.Show();
+                labelSec.Show();
+                labelMs.Show();
+                loginField.Hide();
+                passField.Hide();
+                buttonSignIn.Hide();
+                buttonSignOut.Hide();
+                labelLogin.Hide();
+                labelPass.Hide();
+                LogoTextImage.Hide();
+                MessageBox.Show("Yes");
+            }
+            else
+                MessageBox.Show("No");
+            
+        }
+
+        private void buttonSingOut_Click(object sender, EventArgs e)
+        {
+            loginField.Hide();
+            passField.Hide();
+            labelLogin.Hide();
+            labelPass.Hide();
+            buttonSignIn.Hide();
+            buttonSignOut.Hide();
+            RegLogField.Show();
+            RegPassField.Show();
+            labelRegPass.Show();
+            labelRegLog.Show();
+            buttonRegister.Show();
+        }
+
+        public Boolean isUserExists()
+        {
+            DataBase db = new DataBase();
+            DataTable table = new DataTable();
+            MySqlDataAdapter adapter = new MySqlDataAdapter();
+            MySqlCommand command = new MySqlCommand("SELECT * FROM `users` WHERE `login` = @uL", db.getConnect());
+            command.Parameters.Add("@uL", MySqlDbType.VarChar).Value = RegLogField.Text;
+            adapter.SelectCommand = command;
+            adapter.Fill(table);
+            if (table.Rows.Count > 0)
+            {
+                MessageBox.Show("This login already exists!");
+                return true;
+            }
+            else
+            return false;
+        }
+
+        private void buttonRegister_Click(object sender, EventArgs e)
+        {
+            if (RegLogField.Text == "")
+            {
+                MessageBox.Show("Enter login!");
+                return;
+            }
+            if (RegPassField.Text == "")
+            {
+                MessageBox.Show("Enter password!");
+                return;
+            }
+
+            if (isUserExists())
+                return;
+
+            buttonRegister.Hide();
+            labelRegLog.Hide();
+            labelRegPass.Hide();
+            RegLogField.Hide();
+            RegPassField.Hide();
+            loginField.Show();
+            passField.Show();
+            labelLogin.Show();
+            labelPass.Show();
+            buttonSignIn.Show();
+            buttonSignOut.Show();
+            DataBase db = new DataBase();
+            MySqlCommand command = new MySqlCommand("INSERT INTO `users` (`login`, `pass`) VALUES (@login, @pass)", db.getConnect());
+            command.Parameters.Add("@login", MySqlDbType.VarChar).Value = RegLogField.Text;
+            command.Parameters.Add("@pass", MySqlDbType.VarChar).Value = RegPassField.Text;
+            db.openConnection();
+            if (command.ExecuteNonQuery() == 1)
+                MessageBox.Show("Account has been created.");
+            else
+                MessageBox.Show("Account was not created.");
+            db.closeConnection();
         }
 
         private void Generate_Click(object sender, EventArgs e)
         {
-            LogoImage.Hide();
             LogoTextImage.Hide();
             BackButton.Show();
             PozImage.Show();
+            labelMin.Show();
+            labelSec.Show();
+            labelMs.Show();
+            if (timer1.Enabled)
+            {
+                min = 0;
+                sec = 0;
+                ms = 0;
+            }
+            else
+                timer1.Enabled = true;
+
             if (SexCheckBox.Checked && OralCheckBox.Checked)
             {
                 PozImage.Image = Poses.GetRandomBitmap(PoseType.Both);
@@ -150,32 +288,46 @@ namespace sourse
             {
                 PozImage.Image = Poses.GetRandomBitmap(PoseType.Sex);
             }
-            else
+            else if (OralCheckBox.Checked)
             {
                 PozImage.Image = Poses.GetRandomBitmap(PoseType.Oral);
             }
-            timeLeft = randomizer.Next(180, 600);
-            timer1.Start();
+            else
+            {
+                PozImage.Hide();
+                timer1.Enabled = true;
+            }
+            
         }
-
-        Random randomizer = new Random();
-        int timeLeft;
-
 
         private void timer1_Tick(object sender, EventArgs e)
         {
-            if (timeLeft > 0)
+            if (ms == 0)
             {
-                timeLeft -= 1;
-                timeLabel.Text = timeLeft + " seconds";
-            }
+                if (sec == 0)
+                {
+                    if (min == 0)
+                        min = 03;
+                    else
+                        min--;
+                    sec = 59;
+                } else
+                    sec--;
+                ms = 99;
+            }else
+                ms--;
+            if (min.ToString().Length == 1)
+                labelMin.Text = "0" + min.ToString() + " : ";
             else
-            {
-                timer1.Stop();
-                timeLabel.Text = "Time's up!";
-                MessageBox.Show("You didn't finish in time.", "Sorry!");
-                Generate.Enabled = true;
-            }
+                labelMin.Text = min.ToString();
+            if (sec.ToString().Length == 1)
+                labelSec.Text = "0" + sec.ToString();
+            else
+                labelSec.Text = sec.ToString() + " : ";
+            if (ms.ToString().Length == 1)
+                labelMs.Text = "0" + ms.ToString();
+            else
+                labelMs.Text = ms.ToString();
         }
     }
 }
